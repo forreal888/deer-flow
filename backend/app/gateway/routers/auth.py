@@ -19,7 +19,8 @@ from app.gateway.auth import (
     create_access_token,
 )
 from app.gateway.auth.config import get_auth_config
-from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
+from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse, TokenError
+from app.gateway.auth.jwt import create_refresh_token, decode_token
 from app.gateway.auth.oidc import OIDCError, OIDCService
 from app.gateway.auth.oidc_state import (
     OIDCStatePayload,
@@ -45,10 +46,31 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 class LoginResponse(BaseModel):
-    """Response model for login — token only lives in HttpOnly cookie."""
+    """Response model for login.
+
+    Web clients authenticate via the HttpOnly session cookie. Non-browser
+    clients (mobile / CLI) pass ``?client=mobile`` to receive a JSON token
+    pair in the response body instead.
+    """
 
     expires_in: int  # seconds
     needs_setup: bool = False
+    access_token: str | None = Field(default=None, description="Present only when client=mobile")
+    refresh_token: str | None = Field(default=None, description="Present only when client=mobile")
+
+
+class RefreshRequest(BaseModel):
+    """Request model for token refresh (non-browser clients)."""
+
+    refresh_token: str
+
+
+class RefreshResponse(BaseModel):
+    """Response model for token refresh — JSON token pair."""
+
+    access_token: str
+    refresh_token: str
+    expires_in: int  # access token lifetime in seconds
 
 
 # Top common-password blocklist. Drawn from the public SecLists "10k worst
@@ -313,9 +335,60 @@ async def login_local(
     token = create_access_token(str(user.id), token_version=user.token_version)
     _set_session_cookie(response, token, request)
 
+    config = get_auth_config()
+    # 非浏览器客户端（移动端 / CLI）通过 ?client=mobile 获取 JSON token 对
+    if request.query_params.get("client") == "mobile":
+        return LoginResponse(
+            expires_in=config.token_expiry_days * 24 * 3600,
+            needs_setup=user.needs_setup,
+            access_token=token,
+            refresh_token=create_refresh_token(str(user.id), token_version=user.token_version),
+        )
+
     return LoginResponse(
-        expires_in=get_auth_config().token_expiry_days * 24 * 3600,
+        expires_in=config.token_expiry_days * 24 * 3600,
         needs_setup=user.needs_setup,
+    )
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh_token_endpoint(request: Request, body: RefreshRequest):
+    """Exchange a refresh token for a fresh access token pair.
+
+    Intended for non-browser clients (mobile / CLI). The refresh token is a
+    JWT with ``typ=refresh`` and a longer lifetime than access tokens (see
+    ``AuthConfig.refresh_token_expiry_days``).
+
+    Revocation is enforced via ``User.token_version``: bumping it (e.g. on
+    password change) invalidates every outstanding access/refresh token for
+    that user. The endpoint is public (registered in the auth middleware
+    allow-list) because it is the client's only way to re-authenticate
+    without credentials.
+    """
+    payload = decode_token(body.refresh_token)
+    if isinstance(payload, TokenError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorResponse(code=AuthErrorCode.TOKEN_INVALID, message="Invalid or expired refresh token").model_dump(),
+        )
+    if payload.typ != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorResponse(code=AuthErrorCode.TOKEN_INVALID, message="Not a refresh token").model_dump(),
+        )
+
+    user = await get_local_provider().get_user(payload.sub)
+    if user is None or user.token_version != payload.ver:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=AuthErrorResponse(code=AuthErrorCode.TOKEN_INVALID, message="Refresh token is no longer valid").model_dump(),
+        )
+
+    config = get_auth_config()
+    return RefreshResponse(
+        access_token=create_access_token(str(user.id), token_version=user.token_version),
+        refresh_token=create_refresh_token(str(user.id), token_version=user.token_version),
+        expires_in=config.token_expiry_days * 24 * 3600,
     )
 
 

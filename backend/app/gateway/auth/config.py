@@ -25,6 +25,12 @@ class AuthConfig(BaseModel):
         description="Secret key for JWT signing. MUST be set via AUTH_JWT_SECRET.",
     )
     token_expiry_days: int = Field(default=7, ge=1, le=30)
+    refresh_token_expiry_days: int = Field(
+        default=30,
+        ge=1,
+        le=90,
+        description="Lifetime of refresh tokens issued to non-browser clients.",
+    )
     oauth_github_client_id: str | None = Field(default=None)
     oauth_github_client_secret: str | None = Field(default=None)
 
