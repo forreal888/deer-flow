@@ -11,6 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { normalizeWidgets } from "@/core/widgets";
 import { env } from "@/env";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -22,10 +23,11 @@ import {
 } from "../artifacts";
 import { useThread } from "../messages/context";
 import { SidecarPanel, useMaybeSidecar } from "../sidecar";
+import { useMaybeWidgets, WidgetPanel } from "../widgets";
 
 const RIGHT_PANEL_ANIMATION_MS = 280;
 
-type RightPanelKind = "sidecar" | "artifacts";
+type RightPanelKind = "sidecar" | "artifacts" | "widgets";
 
 const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
   children,
@@ -47,6 +49,11 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
   } = useArtifacts();
   const sidecar = useMaybeSidecar();
   const sidecarOpen = sidecar?.open ?? false;
+  const widgetsState = useMaybeWidgets();
+  const widgetsOpen = widgetsState?.open ?? false;
+  const setWidgets = widgetsState?.setWidgets;
+  const setWidgetsOpen = widgetsState?.setOpen;
+  const widgetCount = widgetsState?.widgets.length ?? 0;
 
   const [autoSelectFirstArtifact, setAutoSelectFirstArtifact] = useState(true);
   useEffect(() => {
@@ -92,21 +99,40 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
     thread.values.artifacts,
   ]);
 
-  const artifactPanelOpen = useMemo(() => {
+  // The widget board lives in thread state; mirror it into the provider so the
+  // panel and trigger stay in sync while a run streams new widgets in.
+  const threadWidgets = thread.values.widgets;
+  useEffect(() => {
+    if (!setWidgets) {
+      return;
+    }
+    setWidgets(normalizeWidgets(threadWidgets));
+  }, [setWidgets, threadWidgets]);
+
+  const widgetPanelOpen = useMemo(() => {
     if (sidecarOpen) {
+      return false;
+    }
+    return widgetsOpen && widgetCount > 0;
+  }, [sidecarOpen, widgetCount, widgetsOpen]);
+
+  const artifactPanelOpen = useMemo(() => {
+    if (sidecarOpen || widgetPanelOpen) {
       return false;
     }
     if (env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true") {
       return artifactsOpen && artifacts?.length > 0;
     }
     return artifactsOpen;
-  }, [artifactsOpen, artifacts, sidecarOpen]);
+  }, [artifactsOpen, artifacts, sidecarOpen, widgetPanelOpen]);
 
   const activeRightPanel: RightPanelKind | null = sidecarOpen
     ? "sidecar"
-    : artifactPanelOpen
-      ? "artifacts"
-      : null;
+    : widgetPanelOpen
+      ? "widgets"
+      : artifactPanelOpen
+        ? "artifacts"
+        : null;
   const rightPanelOpen = activeRightPanel !== null;
   const [renderedRightPanel, setRenderedRightPanel] =
     useState<RightPanelKind | null>(activeRightPanel);
@@ -130,15 +156,31 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
     };
   }, [activeRightPanel]);
 
+  // The right panel shows one surface at a time: sidecar > widgets > artifacts.
   useEffect(() => {
     if (sidecarOpen && artifactsOpen) {
       setArtifactsOpen(false);
     }
-  }, [artifactsOpen, setArtifactsOpen, sidecarOpen]);
+    if (sidecarOpen && widgetsOpen) {
+      setWidgetsOpen?.(false);
+    }
+    if (widgetsOpen && artifactsOpen) {
+      setArtifactsOpen(false);
+    }
+  }, [
+    artifactsOpen,
+    setArtifactsOpen,
+    setWidgetsOpen,
+    sidecarOpen,
+    widgetsOpen,
+  ]);
 
   const rightPanelContent = useMemo(() => {
     if (renderedRightPanel === "sidecar") {
       return <SidecarPanel />;
+    }
+    if (renderedRightPanel === "widgets") {
+      return <WidgetPanel className="size-full" threadId={threadId} />;
     }
     if (renderedRightPanel === "artifacts" && selectedArtifact) {
       return (
@@ -211,6 +253,9 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
             if (artifactsOpen) {
               setArtifactsOpen(false);
             }
+            if (widgetsOpen) {
+              setWidgetsOpen?.(false);
+            }
           }}
         >
           <SheetContent
@@ -219,7 +264,11 @@ const ChatBox: React.FC<{ children: React.ReactNode; threadId: string }> = ({
           >
             <SheetHeader className="sr-only">
               <SheetTitle>
-                {renderedRightPanel === "sidecar" ? "Sidecar" : "Artifacts"}
+                {renderedRightPanel === "sidecar"
+                  ? "Sidecar"
+                  : renderedRightPanel === "widgets"
+                    ? "Widgets"
+                    : "Artifacts"}
               </SheetTitle>
               <SheetDescription>
                 Browse the side panel for this conversation.

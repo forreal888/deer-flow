@@ -5,6 +5,7 @@ import {
   CoinsIcon,
   FolderOpenIcon,
   GlobeIcon,
+  LayoutDashboardIcon,
   LightbulbIcon,
   ListTodoIcon,
   MessageCircleQuestionMarkIcon,
@@ -35,12 +36,14 @@ import {
 } from "@/core/messages/utils";
 import { useRehypeSplitWordsIntoSpans } from "@/core/rehype";
 import { extractTitleFromMarkdown } from "@/core/utils/markdown";
+import { widgetIdFromPath } from "@/core/widgets";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
 import { useArtifacts } from "../artifacts";
 import { FlipDisplay } from "../flip-display";
 import { Tooltip } from "../tooltip";
+import { useMaybeWidgets } from "../widgets/context";
 
 import { MarkdownContent } from "./markdown-content";
 
@@ -467,6 +470,7 @@ function ToolCall({
   const { t } = useI18n();
   const { setOpen, autoOpen, autoSelect, selectedArtifact, select } =
     useArtifacts();
+  const widgets = useMaybeWidgets();
   const tokenLabel = tokenDebugStep
     ? formatDebugToken(tokenDebugStep, t)
     : null;
@@ -704,6 +708,45 @@ function ToolCall({
         label={resolveLabel(t.toolCalls.writeTodos)}
         icon={ListTodoIcon}
       ></ChainOfThoughtStep>
+    );
+  } else if (name === "present_widget") {
+    const {
+      filepath,
+      title,
+      widget_id: explicitWidgetId,
+    } = args as {
+      filepath?: string;
+      title?: string;
+      widget_id?: string;
+    };
+    const widgetId =
+      explicitWidgetId ?? (filepath ? widgetIdFromPath(filepath) : undefined);
+    const widget = widgets?.widgets.find((entry) => entry.id === widgetId);
+    let label: React.ReactNode = t.toolCalls.presentWidget();
+    if (typeof title === "string") {
+      label = t.toolCalls.presentWidget(title);
+    }
+    return (
+      <ChainOfThoughtStep
+        key={id}
+        className={widget ? "cursor-pointer" : undefined}
+        label={resolveLabel(label)}
+        icon={LayoutDashboardIcon}
+        onClick={
+          widget
+            ? () => {
+                widgets?.select(widget.id);
+                widgets?.setOpen(true);
+              }
+            : undefined
+        }
+      >
+        {filepath && (
+          <ChainOfThoughtSearchResult className="cursor-pointer">
+            {filepath}
+          </ChainOfThoughtSearchResult>
+        )}
+      </ChainOfThoughtStep>
     );
   } else {
     const description: string | undefined = (args as { description: string })

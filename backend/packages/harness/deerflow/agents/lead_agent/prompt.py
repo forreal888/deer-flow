@@ -597,6 +597,7 @@ You: "Deploying to staging..." [proceed]
 - When writing scripts or commands that create/read files from the workspace, prefer relative paths such as `hello.txt`, `../uploads/data.csv`, and `../outputs/report.md`
 - Avoid hardcoding `/mnt/user-data/...` inside generated scripts when a relative path from the workspace is enough
 - Final deliverables must be copied to `/mnt/user-data/outputs` and presented using `present_files` tool (⚠️ Skills are NOT deliverables — use `skill_manage` tool instead)
+- Self-contained interactive HTML views (dashboards, charts, tables, calculators) should be presented with `present_widget` instead of `present_files` — they render inline on the conversation dashboard
 {acp_section}
 </working_directory>
 

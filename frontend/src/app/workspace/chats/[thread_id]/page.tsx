@@ -33,6 +33,7 @@ import { TodoList } from "@/components/workspace/todo-list";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { useActiveGoal } from "@/components/workspace/use-active-goal";
 import { Welcome } from "@/components/workspace/welcome";
+import { WidgetTrigger } from "@/components/workspace/widgets";
 import { useI18n } from "@/core/i18n/hooks";
 import {
   buildHumanInputResponseText,
@@ -292,6 +293,7 @@ export default function ChatPage() {
                 <SidecarTrigger />
                 <ExportTrigger threadId={threadId} />
                 <ArtifactTrigger />
+                <WidgetTrigger />
               </div>
             </header>
             <main className="flex min-h-0 max-w-full grow flex-col">

@@ -53,6 +53,12 @@ export const enUS: Translations = {
     regenerate: "Regenerate",
     branch: "Branch conversation",
     showArtifacts: "Show artifacts of this conversation",
+    showWidgets: "Show widgets of this conversation",
+    widgets: "Widgets",
+    noWidget: "No widget yet",
+    noWidgetDescription:
+      "Interactive widgets presented by the assistant appear here",
+    widgetLoadFailed: "Failed to load widget",
   },
 
   // Home
@@ -551,6 +557,8 @@ export const enUS: Translations = {
     lessSteps: "Less steps",
     executeCommand: "Execute command",
     presentFiles: "Present files",
+    presentWidget: (title?: string) =>
+      title ? `Present widget "${title}"` : "Present interactive widget",
     needYourHelp: "Need your help",
     useTool: (toolName: string) => `Use "${toolName}" tool`,
     searchFor: (query: string) => `Search for "${query}"`,

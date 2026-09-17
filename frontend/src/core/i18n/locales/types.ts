@@ -42,6 +42,11 @@ export interface Translations {
     regenerate: string;
     branch: string;
     showArtifacts: string;
+    showWidgets: string;
+    widgets: string;
+    noWidget: string;
+    noWidgetDescription: string;
+    widgetLoadFailed: string;
   };
 
   home: {
@@ -442,6 +447,7 @@ export interface Translations {
     lessSteps: string;
     executeCommand: string;
     presentFiles: string;
+    presentWidget: (title?: string) => string;
     needYourHelp: string;
     useTool: (toolName: string) => string;
     searchForRelatedInfo: string;

@@ -5,6 +5,7 @@ import { Tooltip } from "@/components/workspace/tooltip";
 import { useI18n } from "@/core/i18n/hooks";
 
 import { useMaybeSidecar } from "../sidecar/context";
+import { useMaybeWidgets } from "../widgets/context";
 
 import { useArtifacts } from "./context";
 
@@ -12,6 +13,7 @@ export const ArtifactTrigger = () => {
   const { t } = useI18n();
   const { artifacts, setOpen: setArtifactsOpen } = useArtifacts();
   const sidecar = useMaybeSidecar();
+  const widgets = useMaybeWidgets();
 
   if (!artifacts || artifacts.length === 0) {
     return null;
@@ -25,6 +27,7 @@ export const ArtifactTrigger = () => {
         data-testid="artifact-trigger"
         onClick={() => {
           sidecar?.close();
+          widgets?.setOpen(false);
           setArtifactsOpen(true);
         }}
       >

@@ -30,6 +30,7 @@ import { TodoList } from "@/components/workspace/todo-list";
 import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { Tooltip } from "@/components/workspace/tooltip";
 import { useActiveGoal } from "@/components/workspace/use-active-goal";
+import { WidgetTrigger } from "@/components/workspace/widgets";
 import { useAgent } from "@/core/agents";
 import { useI18n } from "@/core/i18n/hooks";
 import {
@@ -284,6 +285,7 @@ export default function AgentChatPage() {
                 <SidecarTrigger />
                 <ExportTrigger threadId={threadId} />
                 <ArtifactTrigger />
+                <WidgetTrigger />
               </div>
             </header>
 

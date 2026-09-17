@@ -1,6 +1,7 @@
 import type { Message, Thread } from "@langchain/langgraph-sdk";
 
 import type { Todo } from "../todos";
+import type { WidgetEntry } from "../widgets/types";
 
 export interface GoalState {
   objective: string;
@@ -33,6 +34,7 @@ export interface AgentThreadState extends Record<string, unknown> {
   title: string;
   messages: Message[];
   artifacts?: string[];
+  widgets?: WidgetEntry[];
   todos?: Todo[];
   goal?: GoalState | null;
 }

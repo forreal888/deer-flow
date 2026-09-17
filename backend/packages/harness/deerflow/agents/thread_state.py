@@ -227,11 +227,46 @@ def merge_skill_context(existing: list[SkillEntry] | None, new: list[SkillEntry]
     return merged
 
 
+_WIDGETS_MAX_ENTRIES = 48
+
+
+class WidgetEntry(TypedDict):
+    id: str
+    title: str
+    path: str
+    created_at: str
+
+
+def merge_widgets(existing: list[WidgetEntry] | None, new: list[WidgetEntry] | None) -> list[WidgetEntry]:
+    """Reducer for the conversation widget board.
+
+    - new None/empty -> preserve existing.
+    - entries are keyed by ``id``: presenting the same id again refreshes it in
+      place while keeping first-seen order.
+    - cap by keeping the most recently touched entries.
+    """
+    if not new:
+        return existing or []
+
+    by_id: dict[str, WidgetEntry] = {}
+    order: list[str] = []
+    for entry in [*(existing or []), *new]:
+        entry_id = entry["id"]
+        if entry_id not in by_id:
+            order.append(entry_id)
+        by_id[entry_id] = entry
+    merged = [by_id[entry_id] for entry_id in order]
+    if len(merged) > _WIDGETS_MAX_ENTRIES:
+        merged = merged[-_WIDGETS_MAX_ENTRIES:]
+    return merged
+
+
 class ThreadState(AgentState):
     sandbox: SandboxStateField
     thread_data: NotRequired[ThreadDataState | None]
     title: NotRequired[str | None]
     artifacts: Annotated[list[str], merge_artifacts]
+    widgets: Annotated[list[WidgetEntry], merge_widgets]
     todos: Annotated[list | None, merge_todos]
     goal: Annotated[GoalState | None, merge_goal]
     uploaded_files: NotRequired[list[dict] | None]

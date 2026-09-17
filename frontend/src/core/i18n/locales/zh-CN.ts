@@ -53,6 +53,11 @@ export const zhCN: Translations = {
     regenerate: "重新生成",
     branch: "分叉",
     showArtifacts: "查看此对话的文件",
+    showWidgets: "查看此对话的看板",
+    widgets: "看板",
+    noWidget: "暂无看板",
+    noWidgetDescription: "助手推送的交互式组件会显示在这里",
+    widgetLoadFailed: "看板加载失败",
   },
 
   // Home
@@ -530,6 +535,8 @@ export const zhCN: Translations = {
     lessSteps: "隐藏步骤",
     executeCommand: "执行命令",
     presentFiles: "展示文件",
+    presentWidget: (title?: string) =>
+      title ? `展示组件 “${title}”` : "展示交互式组件",
     needYourHelp: "需要你的协助",
     useTool: (toolName: string) => `使用 “${toolName}” 工具`,
     searchFor: (query: string) => `搜索 “${query}”`,
